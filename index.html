@@ -25,6 +25,7 @@
             text-align: center;
             line-height: 20px;
             color: white;
+            width: 0%;
         }
 
         .input-group {
@@ -42,7 +43,23 @@
             <input type="number" id="quantidade" placeholder="Quantidade" value="1">
         </div>
 
-        <div id="customFields">
+        <div class="input-group">
+            <label for="gender">Gênero:</label>
+            <select id="gender">
+                <option value="">Qualquer</option>
+                <option value="male">Masculino</option>
+                <option value="female">Feminino</option>
+            </select>
+        </div>
+
+        <div class="input-group">
+            <label for="birthdayStart">Data de Nascimento (Início):</label>
+            <input type="date" id="birthdayStart">
+        </div>
+
+        <div class="input-group">
+            <label for="birthdayEnd">Data de Nascimento (Fim):</label>
+            <input type="date" id="birthdayEnd">
         </div>
 
         <div class="progress">
@@ -51,6 +68,11 @@
                 aria-valuemax="100"></div>
         </div>
         <button id="btnObterDados">Obter Dados Falsos Personalizados</button>
+
+        <div class="input-group">
+            <label for="searchSubstring">Buscar por Substring:</label>
+            <input type="text" id="searchSubstring" placeholder="Substring">
+        </div>
     </div>
 
     <div id="customDataContainer"></div>
@@ -59,114 +81,98 @@
         document.addEventListener('DOMContentLoaded', function () {
             const btnObterDados = document.getElementById('btnObterDados');
             const progressBar = document.getElementById('progressBar');
+            const statusElement = document.querySelector('.status');
 
             btnObterDados.addEventListener('click', async function () {
                 const quantidadeInput = document.getElementById('quantidade').value;
-                const apiUrl = 'https://fakerapi.it/api/v1/custom';
+                const gender = document.getElementById('gender').value;
+                const birthdayStart = document.getElementById('birthdayStart').value;
+                const birthdayEnd = document.getElementById('birthdayEnd').value;
 
-                const customFields = document.querySelectorAll('.custom-field');
-                const customTypes = document.querySelectorAll('.custom-type');
+                if (birthdayStart > birthdayEnd) {
+                    alert("A data de início não pode ser posterior à data de fim.");
+                    return;
+                }
 
-                const customParams = [];
+                const apiUrl = 'https://fakerapi.it/api/v1/persons';
 
-                customFields.forEach((field, index) => {
-                    customParams.push(`${field.value}=${customTypes[index].value}`);
-                });
-
-                const queryParams = `_quantity=${quantidadeInput}&${customParams.join('&')}`;
+                const queryParams = `_quantity=${quantidadeInput}&_gender=${gender}&_birthday_start=${birthdayStart}&_birthday_end=${birthdayEnd}`;
 
                 const url = `${apiUrl}?${queryParams}`;
 
                 progressBar.style.width = '0%';
                 progressBar.textContent = '0%';
 
-                const camposPersonalizados = document.querySelectorAll('.custom-field');
-                let algumCampoPreenchido = false;
-
-
-
-                camposPersonalizados.forEach(campo => {
-                    if (campo.value.trim() !== '') {
-                        algumCampoPreenchido = true;
-                    }
-                });
-
-                if (!algumCampoPreenchido) {
-                    const confirmacao = window.confirm('Por favor, preencha pelo menos um campo personalizado.');
-                    if (!confirmacao) {
-                        return; 
-                    }
-                }
-
-
                 try {
-                    const response = await fetch(url);
-                    if (!response.ok) {
-                        throw new Error('Erro ao obter os dados personalizados.');
-                    }
-                    const data = await response.json();
-                    exibirDados(data.data);
+                    statusElement.textContent = 'Enviando requisição...';
+
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('GET', url, true);
+
+                    xhr.onreadystatechange = function () {
+                        if (xhr.readyState === 4) {
+                            if (xhr.status === 200) {
+                                progressBar.style.width = '100%';
+                                progressBar.textContent = '100%';
+                                statusElement.textContent = 'Concluído (HTTP status 200)';
+                                const data = JSON.parse(xhr.responseText);
+                                localStorage.setItem('fakeData', JSON.stringify(data.data));
+                                const substring = document.getElementById('searchSubstring').value.trim().toLowerCase();
+                                exibirDados(data.data, substring);
+                            } else {
+                                statusElement.textContent = 'Erro';
+                            }
+                        } else if (xhr.readyState === 3) {
+                            progressBar.style.width = '75%';
+                            progressBar.textContent = '75%';
+                        } else if (xhr.readyState === 2) {
+                            progressBar.style.width = '50%';
+                            progressBar.textContent = '50%';
+                        } else if (xhr.readyState === 1) {
+                            progressBar.style.width = '25%';
+                            progressBar.textContent = '25%';
+                        }
+                    };
+
+                    xhr.send();
+
                 } catch (error) {
                     console.error(error.message);
+                    statusElement.textContent = 'Erro';
                 }
-
-
-
             });
 
-            function exibirDados(arrayDados) {
+            document.getElementById('searchSubstring').addEventListener('keyup', function () {
+                const substring = this.value.trim().toLowerCase();
+                const data = JSON.parse(localStorage.getItem('fakeData'));
+                exibirDados(data, substring);
+            });
+
+            function exibirDados(arrayDados, substring) {
                 const containerDados = document.getElementById('customDataContainer');
                 containerDados.innerHTML = '';
 
                 arrayDados.forEach((dados, index) => {
-                    const divDados = document.createElement('div');
-                    divDados.classList.add('conjuntoDados');
-                    divDados.innerHTML = `<h3>Conjunto de Dados ${index + 1}</h3>`;
+                    let hasMatch = false;
                     for (const chave in dados) {
-                        const paragrafo = document.createElement('p');
-                        paragrafo.textContent = `${chave}: ${dados[chave]}`;
-                        divDados.appendChild(paragrafo);
+                        const valor = dados[chave];
+                        if (typeof valor === 'string' && valor.toLowerCase().includes(substring)) {
+                            hasMatch = true;
+                            break;
+                        }
                     }
-                    containerDados.appendChild(divDados);
+                    if (hasMatch) {
+                        const divDados = document.createElement('div');
+                        divDados.classList.add('conjuntoDados');
+                        divDados.innerHTML = `<h3>Conjunto de Dados ${index + 1}</h3>`;
+                        for (const chave in dados) {
+                            const paragrafo = document.createElement('p');
+                            paragrafo.textContent = `${chave}: ${dados[chave]}`;
+                            divDados.appendChild(paragrafo);
+                        }
+                        containerDados.appendChild(divDados);
+                    }
                 });
-            }
-
-            const customFieldsContainer = document.getElementById('customFields');
-            const customFieldTypes = ['number', 'email', 'date', 'firstName', 'email'];
-            for (let i = 1; i <= 3; i++) {
-                const divInputGroup = document.createElement('div');
-                divInputGroup.classList.add('input-group');
-
-                const labelField = document.createElement('label');
-                labelField.setAttribute('for', `customField${i}`);
-                labelField.textContent = `Nome do Campo Personalizado ${i}:`;
-
-                const inputField = document.createElement('input');
-                inputField.setAttribute('type', 'email');
-                inputField.setAttribute('id', `customField${i}`);
-                inputField.setAttribute('placeholder', `customfield${i}`);
-                inputField.classList.add('custom-field');
-
-                const labelType = document.createElement('label');
-                labelType.setAttribute('for', `customType${i}`);
-                labelType.textContent = `Tipo do Campo Personalizado ${i}:`;
-
-                const selectType = document.createElement('select');
-                selectType.setAttribute('id', `customType${i}`);
-                selectType.classList.add('custom-type');
-                customFieldTypes.forEach(type => {
-                    const option = document.createElement('option');
-                    option.setAttribute('value', type);
-                    option.textContent = type;
-                    selectType.appendChild(option);
-                });
-
-                divInputGroup.appendChild(labelField);
-                divInputGroup.appendChild(inputField);
-                divInputGroup.appendChild(labelType);
-                divInputGroup.appendChild(selectType);
-
-                customFieldsContainer.appendChild(divInputGroup);
             }
         });
     </script>
