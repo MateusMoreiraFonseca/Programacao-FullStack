@@ -106,35 +106,35 @@
                 try {
                     statusElement.textContent = 'Enviando requisição...';
 
-                    const xhr = new XMLHttpRequest();
-                    xhr.open('GET', url, true);
+                    const requisicaoXMLHttp = new XMLHttpRequest();
+                    requisicaoXMLHttp.open('GET', url, true);
 
-                    xhr.onreadystatechange = function () {
-                        if (xhr.readyState === 4) {
-                            if (xhr.status === 200) {
+                    requisicaoXMLHttp.onreadystatechange = function () {
+                        if (requisicaoXMLHttp.readyState === 4) {
+                            if (requisicaoXMLHttp.status === 200) {
                                 progressBar.style.width = '100%';
                                 progressBar.textContent = '100%';
                                 statusElement.textContent = 'Concluído (HTTP status 200)';
-                                const data = JSON.parse(xhr.responseText);
+                                const data = JSON.parse(requisicaoXMLHttp.responseText);
                                 localStorage.setItem('fakeData', JSON.stringify(data.data));
                                 const substring = document.getElementById('searchSubstring').value.trim().toLowerCase();
                                 exibirDados(data.data, substring);
                             } else {
                                 statusElement.textContent = 'Erro';
                             }
-                        } else if (xhr.readyState === 3) {
+                        } else if (requisicaoXMLHttp.readyState === 3) {
                             progressBar.style.width = '75%';
                             progressBar.textContent = '75%';
-                        } else if (xhr.readyState === 2) {
+                        } else if (requisicaoXMLHttp.readyState === 2) {
                             progressBar.style.width = '50%';
                             progressBar.textContent = '50%';
-                        } else if (xhr.readyState === 1) {
+                        } else if (requisicaoXMLHttp.readyState === 1) {
                             progressBar.style.width = '25%';
                             progressBar.textContent = '25%';
                         }
                     };
 
-                    xhr.send();
+                    requisicaoXMLHttp.send();
 
                 } catch (error) {
                     console.error(error.message);
